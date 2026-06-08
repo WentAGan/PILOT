@@ -1,8 +1,4 @@
-"""Data utilities for leave-one-out sequential recommendation.
-
-The loaders build training, validation and test sequences from the processed
-pickle dataset files.
-"""
+"""Data loaders for leave-one-out sequential recommendation."""
 
 import torch
 import torch.utils.data as data_utils
@@ -24,24 +20,24 @@ class TrainDataset(data_utils.Dataset):
         return torch.LongTensor(tokens), torch.LongTensor(labels)
 
 
-class Data_Train():
+class Data_Train:
     def __init__(self, data_train, args):
         self.u2seq = data_train
         self.max_len = args.max_len
         self.batch_size = args.batch_size
+        self.id_seq = {}
         self.split_onebyone()
 
     def split_onebyone(self):
-        self.id_seq = {}
         idx = 0
-        for seq_temp in self.u2seq.values():
-            for star in range(len(seq_temp) - 1):
-                self.id_seq[idx] = seq_temp[:star + 2]
+        for seq in self.u2seq.values():
+            for start in range(len(seq) - 1):
+                self.id_seq[idx] = seq[:start + 2]
                 idx += 1
 
     def get_pytorch_dataloaders(self):
         dataset = TrainDataset(self.id_seq, self.max_len)
-        return data_utils.DataLoader(dataset, batch_size=self.batch_size, shuffle=True, pin_memory=True)
+        return data_utils.DataLoader(dataset, batch_size=self.batch_size, shuffle=True, pin_memory=torch.cuda.is_available())
 
 
 class ValDataset(data_utils.Dataset):
@@ -62,7 +58,7 @@ class ValDataset(data_utils.Dataset):
         return torch.LongTensor(seq), torch.LongTensor(answer)
 
 
-class Data_Val():
+class Data_Val:
     def __init__(self, data_train, data_val, args):
         self.batch_size = args.batch_size
         self.u2seq = data_train
@@ -71,13 +67,13 @@ class Data_Val():
 
     def get_pytorch_dataloaders(self):
         dataset = ValDataset(self.u2seq, self.u2answer, self.max_len)
-        return data_utils.DataLoader(dataset, batch_size=self.batch_size, shuffle=False, pin_memory=True)
+        return data_utils.DataLoader(dataset, batch_size=self.batch_size, shuffle=False, pin_memory=torch.cuda.is_available())
 
 
 class TestDataset(data_utils.Dataset):
-    def __init__(self, u2seq, u2_seq_add, u2answer, max_len):
+    def __init__(self, u2seq, u2seq_add, u2answer, max_len):
         self.u2seq = u2seq
-        self.u2seq_add = u2_seq_add
+        self.u2seq_add = u2seq_add
         self.users = sorted(self.u2seq.keys())
         self.u2answer = u2answer
         self.max_len = max_len
@@ -94,7 +90,7 @@ class TestDataset(data_utils.Dataset):
         return torch.LongTensor(seq), torch.LongTensor(answer)
 
 
-class Data_Test():
+class Data_Test:
     def __init__(self, data_train, data_val, data_test, args):
         self.batch_size = args.batch_size
         self.u2seq = data_train
@@ -104,4 +100,4 @@ class Data_Test():
 
     def get_pytorch_dataloaders(self):
         dataset = TestDataset(self.u2seq, self.u2seq_add, self.u2answer, self.max_len)
-        return data_utils.DataLoader(dataset, batch_size=self.batch_size, shuffle=False, pin_memory=True)
+        return data_utils.DataLoader(dataset, batch_size=self.batch_size, shuffle=False, pin_memory=torch.cuda.is_available())
